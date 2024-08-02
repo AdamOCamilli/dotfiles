@@ -1,0 +1,115 @@
+#!/bin/bash
+###########################################################################
+# Description: 
+# Setup dotfiles: Create symlinks to all non-git dotfiles and run OS-
+# specific config.
+###########################################################################
+
+# Error/warning strings for logging
+log_error() { echo "ERROR: $0 $1" 2>&1 }
+log_warn() { echo "WARNING: $0 $1" 2>&1 }
+
+# Usage
+usage () {
+    echo "$0 : Setup for dotfiles"
+    echo -e "\t-h | --help : Display this message and exit"
+}
+
+
+# From https://stackoverflow.com/a/8574392
+contains() {
+    set +e
+    local e match="$1"
+    shift
+    for e; do 
+      if [[ "$e" == "$match" ]]; then
+          set -e 
+          echo "$e"
+      fi
+    done
+    set -e
+}
+
+while [[ $# -gt 0 ]]; do
+    case "${1}" in
+        -h | --help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Invalid arg \"${1}\""
+            exit 1
+            ;;
+    esac
+done
+
+
+# Symlink function
+link_target () {
+    src="${1}"
+    dest="${2}"
+    
+    # Check src
+    if [[ ! -r "${src}" ]]; then
+        log_error "${src} is not readable"
+    else
+        # Check dest
+        if [[ -L "${dest}" ]]; then
+            if [[ ! -r "${dest}" ]]; then
+                log_error "${dest} is a symlink but not readable, skipping"
+            fi
+        elif [[ ! -r "${dest}" ]]; then
+            log_error "${dest} is readable but not a symlink, skipping"
+        fi
+        mkdir -p "$(dirname ${dest})"
+        ln -sv "${src}" "${dest}"
+}
+
+# Set platform
+unameOut="$(uname -s)"
+case "${unameOut}" in
+    Linux*)     
+        if grep -qi microsoft /proc/version; then
+            PLATFORM=WSL
+        else
+            PLATFORM=Linux
+        fi
+        ;;
+    Darwin*)    
+        PLATFORM=Darwin
+        ;;
+    CYGWIN*)    
+        PLATFORM=Cygwin
+        export CHERE_INVOKING=1
+        ;;
+    MINGW*)     
+        PLATFORM=Windows
+        ;;
+    *)          
+        PLATFORM="UNKNOWN"
+        ;;
+esac
+
+LINK_EXCLUDES=("./.git" "./Linux" "./WSL" "./Cygwin" "./Windows" "./Darwin" "./setup-*" "README.md")
+
+if [[ "${PLATFORM}" -eq "UNKNOWN" ]]; then
+    log_warn "unknown platform \"$(uname -s)\" no OS specific symlinks will be created"
+else
+    # Non-platform based items
+    pushd "${HOME}/dotfiles}"
+    mapfile -t items < <(find . -maxdepth 1 -iwholename "./*")
+    for item in "${items[@]}"; do
+        if ! contains "${item}" "${LINK_EXCLUDES[@]}"; then
+            link_target "${item}" "${HOME}/${item}"
+        fi
+    done
+    # Platform-based items
+    pushd "./${PLATFORM}"
+    mapfile -t platform_items < <(find . -maxdepth 1 -iwholename "./*")
+    for platform_item in "${platform_items[@]}"; do
+        link_target "${platform_item}" "${HOME}/${platform_item}"
+    done
+fi
+
+
+
