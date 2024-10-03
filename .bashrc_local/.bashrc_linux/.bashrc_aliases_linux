@@ -1,18 +1,58 @@
 # apt
 if command -v apt &> /dev/null; then 
-    search_func() {
-        apt-cache search $1
-    }
-    alias search='search_func '
     alias install='sudo apt install '
-    alias remove='sudo apt-get remove '
-    alias update='sudo apt-get update && sudo apt-get upgrade '
-    alias remove='sudo apt-get remove '
-    # adapted from https://askubuntu.com/a/250530
     alias installed="(zcat $(ls -tr /var/log/apt/history.log*); cat /var/log/apt/history.log) 2>/dev/null | egrep '^(Commandline:)' | \grep -v aptdaemon | egrep -o 'apt(-get)? install.*'"
+    # adapted from https://askubuntu.com/a/250530
     # no apt* text, flags (-y, etc) or newlines
     alias installed_neat="installed | sed -E 's/apt(-get)? (install)?//g' | tr '\n' ' ' | sed 's/ -[[:alnum:]]\+//g'"
+    alias remove='sudo apt-get remove '
+    alias search='apt search --names-only'
+    alias update='sudo apt-get update && sudo apt-get upgrade'
 fi
+
+####################################################################################################
+# fzf
+####################################################################################################
+# regular options
+export FZF_DEFAULT_OPTS="--multi \
+--height=50% \
+--margin=5%,2%,2%,5% \
+--layout=reverse-list \
+--border=double \
+--info=inline \
+--prompt='$>' \
+--pointer='→' \
+--marker='♡' \
+--header='CTRL-c or ESC to quit' \
+"
+# color scheme generated with https://vitormv.github.io/fzf-themes/
+export FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS'
+  --color=fg:#d0d0d0,fg+:#d0d0d0,bg:#121212,bg+:#262626
+  --color=hl:#5f87af,hl+:#5fd7ff,info:#afaf87,marker:#87ff00
+  --color=prompt:#d7005f,spinner:#af5fff,pointer:#af5fff,header:#87afaf
+  --color=border:#262626,label:#aeaeae,query:#d9d9d9
+  --border="rounded" --border-label="" --preview-window="border-rounded" --prompt="> "
+  --marker=">" --pointer="◆" --separator="─" --scrollbar="│"'
+# default commands
+export FZF_DEFAULT_COMMAND='fd . --hidden'
+# choose program to open result in
+fzf_run() {
+    local dir="${1:-.}"  # Default to current directory if no argument is given
+    shift
+    local run="${@:-echo}" # Program to open result in, echo if no arg given
+    local res=$(fd . "${dir}" --hidden | fzf)
+
+    if [[ ! -z ${res} ]]; then
+        ${run} "${res}"
+    fi
+}
+fzf_vim() {
+    local dir="${1:-.}"  # Default to current directory if no argument is given
+    vim $(fd . "${dir}" --hidden | fzf)
+}
+# aliases
+alias f='fzf_run '
+alias vf='fzf_vim '
 
 if command -v krusader &> /dev/null; then 
     k() {
@@ -29,7 +69,6 @@ fi
 alias b='batcat '
 
 # nitrogen
-
 # $1 - path to nitrogen cfg folder of form:
 #   .config/nitrogen/
 #   ├── bg-saved.cfg
@@ -120,7 +159,4 @@ nv_reset_func() {
 }
 alias nv_reset='nv_reset_func '
 
-# zfs
-# d=/media/adam/zfs/AOC-Media ; sudo mkdir -p $d; sudo zpool -o mountpoint=$d atime=off compression=lz4 recordsize=1M sync=disabled xattr=sa create AOC-Media-5TB /dev/disk/by-label/AOC-Media-Drive
-#
 

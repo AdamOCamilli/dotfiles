@@ -10,6 +10,10 @@
 # If not running interactively, don't do anything
 [[ "$-" != *i* ]] && return
 
+# ble.sh autocomplete
+# Add this lines at the top of .bashrc:
+[[ "$-" == *i* ]] && source ${HOME}/ble-nightly/ble.sh --noattach
+
 # Get useful snippets
 source "${HOME}/.bashrc_local/util.sh"
 
@@ -349,9 +353,9 @@ qbit_yts_mx_download () {
 
 # reset
 if [[ "${PLATFORM}" -eq "Linux" || "${PLATFORM}" -eq "WSL" ]]; then
-    alias r='source ${HOME}/.bashrc && reset && neofetch ' # have reset run bashrc to get any updates + neofetch
+    alias r='reset ; neofetch ; source ${HOME}/.bashrc' # have reset run bashrc to get any updates + neofetch
 else
-    alias r='source ${HOME}/.bashrc && reset' # have reset run bashrc to get any updates
+    alias r='reset ; source ${HOME}/.bashrc' # have reset run bashrc to get any updates
 fi
 
 # Easy way to change prompt length if bothersome for terminal window size
@@ -671,6 +675,9 @@ EOF
     fi
 }
 alias sudorc='sudorc_func '
+
+# Add this line at the end of .bashrc:
+[[ ! ${BLE_VERSION-} ]] || ble-attach
 
 ####################################################################################################
 # Appended by 3rd party scripts (don't push)
