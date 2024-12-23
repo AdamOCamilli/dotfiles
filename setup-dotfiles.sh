@@ -152,7 +152,7 @@ case "${unameOut}" in
 esac
 
 # Don't link git files, OS-specific config files and setup scripts
-LINK_EXCLUDES=(".git" "Linux" "WSL" "Cygwin" "Windows" "Darwin" "setup-*" "README.md")
+LINK_EXCLUDES=(".git" "linux" "wsl" "cygwin" "windows" "darwin" "setup-*" "*.md")
 
 if [[ "${PLATFORM}" == "UNKNOWN" ]]; then
     log_warn "unknown platform \"${PLATFORM}\" no OS specific symlinks will be created"
