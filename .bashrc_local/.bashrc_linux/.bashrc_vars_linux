@@ -1,5 +1,0 @@
-export XFCE="${HOME}/.config/xfce4/terminal/terminalrc"
-export i3="${HOME}/.config/i3/"
-export polybar="${HOME}/.config/polybar/"
-export dev="${HOME}/Documents/dev/"
-export powerline="${HOME}/.local/lib/python3.11/site-packages/powerline"
