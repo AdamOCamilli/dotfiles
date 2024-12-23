@@ -1,0 +1,5 @@
+alias tm='tmux '
+alias tn='tmux new -s '
+alias tl='tmux list-sessions '
+alias ta='tmux at -t '
+alias tk='tmux kill-session -t '

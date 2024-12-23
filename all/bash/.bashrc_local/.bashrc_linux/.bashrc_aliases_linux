@@ -1,0 +1,162 @@
+# apt
+if command -v apt &> /dev/null; then 
+    alias install='sudo apt install '
+    alias installed="(zcat $(ls -tr /var/log/apt/history.log*); cat /var/log/apt/history.log) 2>/dev/null | egrep '^(Commandline:)' | \grep -v aptdaemon | egrep -o 'apt(-get)? install.*'"
+    # adapted from https://askubuntu.com/a/250530
+    # no apt* text, flags (-y, etc) or newlines
+    alias installed_neat="installed | sed -E 's/apt(-get)? (install)?//g' | tr '\n' ' ' | sed 's/ -[[:alnum:]]\+//g'"
+    alias remove='sudo apt-get remove '
+    alias search='apt search --names-only'
+    alias update='sudo apt-get update && sudo apt-get upgrade'
+fi
+
+####################################################################################################
+# fzf
+####################################################################################################
+# regular options
+export FZF_DEFAULT_OPTS="--multi \
+--height=50% \
+--margin=5%,2%,2%,5% \
+--layout=reverse-list \
+--border=double \
+--info=inline \
+--prompt='$>' \
+--pointer='→' \
+--marker='♡' \
+--header='CTRL-c or ESC to quit' \
+"
+# color scheme generated with https://vitormv.github.io/fzf-themes/
+export FZF_DEFAULT_OPTS=$FZF_DEFAULT_OPTS'
+  --color=fg:#d0d0d0,fg+:#d0d0d0,bg:#121212,bg+:#262626
+  --color=hl:#5f87af,hl+:#5fd7ff,info:#afaf87,marker:#87ff00
+  --color=prompt:#d7005f,spinner:#af5fff,pointer:#af5fff,header:#87afaf
+  --color=border:#262626,label:#aeaeae,query:#d9d9d9
+  --border="rounded" --border-label="" --preview-window="border-rounded" --prompt="> "
+  --marker=">" --pointer="◆" --separator="─" --scrollbar="│"'
+# default commands
+export FZF_DEFAULT_COMMAND='fd . --hidden'
+# choose program to open result in
+fzf_run() {
+    local dir="${1:-.}"  # Default to current directory if no argument is given
+    shift
+    local run="${@:-echo}" # Program to open result in, echo if no arg given
+    local res=$(fd . "${dir}" --hidden | fzf)
+
+    if [[ ! -z ${res} ]]; then
+        ${run} "${res}"
+    fi
+}
+fzf_vim() {
+    local dir="${1:-.}"  # Default to current directory if no argument is given
+    vim $(fd . "${dir}" --hidden | fzf)
+}
+# aliases
+alias f='fzf_run '
+alias vf='fzf_vim '
+
+if command -v krusader &> /dev/null; then 
+    k() {
+        if [[ -d "$1" || -f "$1" ]]; then
+            path="$(realpath $1)"
+        else
+            path="$(realpath .)"
+        fi
+        krusader "${path}" &> /dev/null &
+    }
+fi
+
+# sharkdp/bat
+alias b='batcat '
+
+# nitrogen
+# $1 - path to nitrogen cfg folder of form:
+#   .config/nitrogen/
+#   ├── bg-saved.cfg
+#   └── nitrogen.cfg
+# If path given, script copies new cfg files and moves old ones to *-old:
+#   .config/nitrogen/
+#   ├── bg-saved.cfg -> bg-saved-old-$(date +%s).cfg
+#   ├── nitrogen.cfg -> nitrogen-old-$(date +%s).cfg
+#   ├── bg-saved.cfg <- $1/bg-saved.cfg
+#   └── nitrogen.cfg <- $1/nitrogen.cfg
+# If no path given AND *-old-... pair present, delete current cfg files and restore newest *-old-... pair:
+#   .config/nitrogen/
+#   ├── bg-saved.cfg -> <DELETE>
+#   ├── nitrogen.cfg -> <DELETE>
+#   ├── bg-saved-old-<MOST RECENT>.cfg -> bg-saved.cfg
+#   ├── nitrogen-<MOST RECENT>$(date +%s).cfg -> nitrogen.cfg
+#   ├── bg-saved-old-<OTHER>.cfg -> <NOTHING>
+#   ├── nitrogen-<OTHER>.cfg -> <NOTHING>
+#   └── ...
+swap_nitrogen_cfg() {
+    nitrogen_cfg_dir="${HOME}/.config/nitrogen"
+    if [[ -d "${nitrogen_cfg_dir}" ]]; then
+        if [[ -d "${1}" ]]; then
+            if [[ -f "${1}/bg-saved.cfg" && -f "${1}/nitrogen.cfg" ]]; then
+                # Save original cfg files, but delete others
+                original_nitrogen_cfg_file=$(find "${nitrogen_cfg_dir}" -type f -name "nitrogen-original-*" -printf "%T@ %p\n" | sort -n | cut -d ' ' -f 2 | head -n 1)
+                original_bg_saved_cfg_file=$(find "${nitrogen_cfg_dir}" -type f -name "bg-saved-original-*" -printf "%T@ %p\n" | sort -n | cut -d ' ' -f 2 | head -n 1)
+                if [[ -z "${original_nitrogen_cfg_file}" && -z "${original_bg_saved_cfg_file}" ]]; then
+                    mv "${nitrogen_cfg_dir}/bg-saved.cfg" "${nitrogen_cfg_dir}/bg-saved-original-$(date +%s).cfg"
+                    mv "${nitrogen_cfg_dir}/nitrogen.cfg" "${nitrogen_cfg_dir}/nitrogen-original-$(date +%s).cfg"
+                else
+                    # Delete current cfg files (safe b/c since they were swapped in they presumably exist somewhere else)
+                    rm "${nitrogen_cfg_dir}/bg-saved.cfg" 
+                    rm "${nitrogen_cfg_dir}/nitrogen.cfg" 
+                fi
+                # Copy new cfg files from $1
+                cp "${1}/bg-saved.cfg" "${nitrogen_cfg_dir}/bg-saved.cfg"
+                cp "${1}/nitrogen.cfg" "${nitrogen_cfg_dir}/nitrogen.cfg"
+                nitrogen --restore
+            else
+                echo "ERROR ${FUNCNAME} -  \"${1}\" is missing one of two required nitrogen .cfg files (bg-saved.cfg and nitrogen.cfg)"
+            fi
+        else
+            if [[ -z "${1}" ]]; then
+                # Treat original files differently
+                original_nitrogen_cfg_file=$(find "${nitrogen_cfg_dir}" -type f -name "nitrogen-original-*" -printf "%T@ %p\n" | sort -n | cut -d ' ' -f 2 | head -n 1)
+                original_bg_saved_cfg_file=$(find "${nitrogen_cfg_dir}" -type f -name "bg-saved-original-*" -printf "%T@ %p\n" | sort -n | cut -d ' ' -f 2 | head -n 1)
+                if [[ -f "${original_nitrogen_cfg_file}" && "${original_bg_saved_cfg_file}" ]]; then
+                    # Delete current cfg files (safe b/c since they were swapped in they presumably exist somewhere else)
+                    rm "${nitrogen_cfg_dir}/nitrogen.cfg"
+                    rm "${nitrogen_cfg_dir}/bg-saved.cfg"
+                    # Restore the most recent *-old-... files
+                    cp "${original_nitrogen_cfg_file}" "${nitrogen_cfg_dir}/nitrogen.cfg"
+                    cp "${original_bg_saved_cfg_file}" "${nitrogen_cfg_dir}/bg-saved.cfg"
+                    nitrogen --restore
+                else
+                    echo "ERROR ${FUNCNAME} -  No old cfg files to restore:"
+                    if [[ "$(command -v tree)" ]]; then
+                        tree "${nitrogen_cfg_dir}"
+                    else 
+                        ls "${nitrogen_cfg_dir}"
+                    fi
+                fi
+            else
+                echo "ERROR ${FUNCNAME} -  No directory named \"${1}\""
+            fi
+        fi
+    else
+        echo "ERROR ${FUNCNAME} -  Nitrogen cfg dir missing from "${nitrogen_cfg_dir}", is it installed?"
+    fi
+}
+alias nsw='swap_nitrogen_cfg '
+
+# nnn
+alias n='nnn '
+
+# nvidia
+nv_reset_func() {
+    sudo rmmod nvidia_uvm
+    sudo rmmod nvidia_drm
+    sudo rmmod nvidia_modeset
+    sudo rmmod nvidia
+
+    sudo modprobe nvidia_uvm
+    sudo modprobe nvidia_drm
+    sudo modprobe nvidia_modeset
+    sudo modprobe nvidia
+}
+alias nv_reset='nv_reset_func '
+
+

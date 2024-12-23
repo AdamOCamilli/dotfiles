@@ -1,0 +1,17 @@
+.workspace {
+color: #FFFFFF;
+font-family: "Symbols Nerd Font", sans-serif;
+font-size: 16px;
+margin-left: 2px;
+margin-right: 2px;
+}
+.workspace.visible {
+color: #FF7800;
+font-size: 18px;
+}
+.workspace.focused {
+font-weight: bold;
+}
+.workspace.urgent { color: red; }
+.binding-mode { }
+

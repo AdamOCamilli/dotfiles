@@ -1,0 +1,121 @@
+#!/bin/bash
+
+# Aliases for this machine
+
+alias signtool="/cygdrive/c/Program\ Files\ \(x86\)/Windows\ Kits/10/bin/10.0.19041.0/x86/signtool"
+
+alias cs='cygstart'
+alias cw='cygpath -w'
+# Aliases for programs that annoyingly do not map name to exe files correctly
+# Don't need cygstart for these
+irfanview_func() { 
+    irfanview_path='/cygdrive/c/Program Files/IrfanView/i_view64.exe'
+    "${irfanview_path}" $@ &
+}
+alias irfanview='irfanview_func '
+
+# Open in Windows File Explorer from Cygwin
+e () {
+    if [[ -d "$1" || -f "$1" ]]; then
+        path="$(realpath $1)"
+    else
+        path="$(realpath .)"
+    fi
+    winpath=$(cygpath -w "${path}")
+    explorer.exe "${winpath}"
+        
+}
+
+# Print absolute windows path
+w_macro () {
+    abs_path=$(realpath "$1")
+    echo $(cygpath -w "${abs_path}")
+}
+alias w='w_macro '
+
+# Start autossh daemon 
+af_macro() {
+    local machine=""
+    local port=""
+    while [ $# -gt 0 ]; do
+        case "${1}" in 
+            ''|*[!0-9]*)
+                if [[ -z "${machine}" ]]; then
+                    machine="${1}"
+                else
+                    echo "Error: Non-numerical argument when machine already specified"
+                    return
+                fi
+                shift;;
+            *)
+                if [[ "${1}" -gt 0 && -z "${port}" ]]; then
+                    port="${1}"
+                elif [[ -n "${port}" ]]; then
+                    echo "Error: port set twice"
+                else
+                    echo "Error: port must be greater than 0"
+                    return
+                fi
+                shift;;
+        esac
+    done
+    if [[ -n "${machine}" && -n "${port}" ]]; then
+        autossh -M 0 -L "${port}":localhost:"${port}" -N "${machine}" &
+    elif [[ -n "${machine}" ]]; then
+        echo "No port provided, defaulting to 5901"
+        autossh -M 0 -L 5901:localhost:5901 -N "${machine}" &
+    else
+        echo "Error, no machine provided"
+        return
+    fi
+}
+alias af='af_macro '
+
+# Code only works with Windows style paths in Windows
+code_macro() {
+    new_args=()
+    # Go through arglist and convert any file paths to absolute Windows-style paths
+    for arg in "$@"; do
+        if [[ -f "$arg" ]]; then
+            $(w "$arg")
+            new_args+=("${arg}")
+        elif [[ ${arg} == *:* ]]; then
+            IFS=':' read -ra tokens <<< "$arg"
+            modified_arg=""
+            for token in "${tokens[@]}"; do
+                if [[ -f ${token} ]]; then
+                    modified_arg+=$(w "${token}")
+                elif [[ -n ${modified_arg} ]]; then
+                    modified_arg+="${token}"
+                fi
+                modified_arg+=":"
+            done
+            new_args+=("$modified_arg")
+        else
+            new_args+=("${arg}")
+        fi
+    done
+
+    \code ${new_args[@]}
+}
+alias code='code_macro '
+
+# Tortoise SVN exec macros
+#   $1 - SVN URL -> open in repo browser
+# OR
+#   $1 - TortoiseProc.exe command 1
+#   $2 - TortoiseProc.exe command 2
+#   ...
+tsvn_macro() {
+    if [ $# -eq 1 ]; then
+        if svn info "$1" >/dev/null 2>&1; then
+            TortoiseProc.exe /command:repobrowser /path:"$1" &
+        else
+            echo "Invalid SVN URL"
+            exit 1
+        fi
+    else
+        TortoiseProc.exe "$@" &
+    fi
+}
+alias tsvn='tsvn_macro '
