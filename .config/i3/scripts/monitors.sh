@@ -1,6 +1,5 @@
-#!/bin/bash
+#!/bin/sh
 ###########################################################################
- # Name: monitors.sh
  # Author: Adam Camilli <AdamOCamilli@github.com>
  # Description: Adjust i3 monitors
  # Date: 03/18/2024
